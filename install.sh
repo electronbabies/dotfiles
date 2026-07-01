@@ -32,16 +32,25 @@ link_item() {
 echo "Installing dotfiles from: $DOTFILES_DIR"
 
 # ~/.config apps
-link_item "$DOTFILES_DIR/config/hypr" "$HOME/.config/hypr"
-link_item "$DOTFILES_DIR/config/kitty" "$HOME/.config/kitty"
-link_item "$DOTFILES_DIR/config/nvim" "$HOME/.config/nvim"
-link_item "$DOTFILES_DIR/config/waybar" "$HOME/.config/waybar"
+link_item "$DOTFILES_DIR/.config/hypr" "$HOME/.config/hypr"
+link_item "$DOTFILES_DIR/.config/kitty" "$HOME/.config/kitty"
+link_item "$DOTFILES_DIR/.config/nvim" "$HOME/.config/nvim"
+link_item "$DOTFILES_DIR/.config/waybar" "$HOME/.config/waybar"
 
 # home files
-link_item "$DOTFILES_DIR/home/.gitconfig" "$HOME/.gitconfig"
-link_item "$DOTFILES_DIR/home/.bashrc" "$HOME/.bashrc"
-link_item "$DOTFILES_DIR/home/.zshrc" "$HOME/.zshrc"
+link_item "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
+link_item "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc"
+link_item "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
 
 echo
 echo "Done."
 echo "Backups, if any, are in: $BACKUP_DIR"
+
+echo
+echo "✔ Installation complete."
+echo
+echo "Backups: $BACKUP_DIR"
+echo
+echo "Next steps:"
+echo "  git status"
+echo "  hyprctl reload"
