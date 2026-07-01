@@ -26,6 +26,8 @@ if [ -d ~/.bashrc.d ]; then
 fi
 unset rc
 
+# Automatically attach to the main tmux session when opening
+# an interactive terminal outside of tmux.
 if command -v tmux >/dev/null 2>&1 && [ -z "$TMUX" ]; then
   tmux new-session -A -s main
 fi

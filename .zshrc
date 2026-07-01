@@ -64,7 +64,8 @@ alias rm='rm -i'
 
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# Auto-start tmux for interactive terminals
+# Automatically attach to the main tmux session when opening
+# an interactive terminal outside of tmux.
 if command -v tmux >/dev/null 2>&1 && [ -z "$TMUX" ] && [[ $- == *i* ]]; then
     tmux new-session -A -s main
 fi
