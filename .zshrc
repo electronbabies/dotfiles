@@ -66,6 +66,6 @@ alias rm='rm -i'
 
 # Automatically attach to the main tmux session when opening
 # an interactive terminal outside of tmux.
-if command -v tmux >/dev/null 2>&1 && [ -z "$TMUX" ] && [[ $- == *i* ]]; then
+if command -v tmux >/dev/null 2>&1 && [ -z "$TMUX" ] && [[ $- == *i* ]] && tty -s; then
     tmux new-session -A -s main
 fi
