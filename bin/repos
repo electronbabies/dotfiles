@@ -3,6 +3,11 @@
 set -u
 
 CODE_DIR="${HOME}/code"
+
+EXTRA_REPOS=(
+  "${HOME}/Nextcloud/ObsidianVault/Infrastructure"
+)
+
 FETCH=false
 
 case "${1:-}" in
@@ -25,12 +30,26 @@ EOF
   ;;
 esac
 
-printf "%-24s %-18s %-14s %s\n" "REPOSITORY" "BRANCH" "WORKTREE" "REMOTE"
-printf "%-24s %-18s %-14s %s\n" "----------" "------" "--------" "------"
+printf "%-40s %-18s %-14s %s\n" \
+  "REPOSITORY" \
+  "BRANCH" \
+  "WORKTREE" \
+  "REMOTE"
+
+printf "%-40s %-18s %-14s %s\n" \
+  "----------" \
+  "------" \
+  "--------" \
+  "------"
 
 while IFS= read -r git_dir; do
   repo_dir="${git_dir%/.git}"
-  repo_name="${repo_dir#"$CODE_DIR"/}"
+
+  if [[ "$repo_dir" == "$CODE_DIR/"* ]]; then
+    repo_name="${repo_dir#"$CODE_DIR"/}"
+  else
+    repo_name="${repo_dir#"$HOME"/}"
+  fi
 
   branch="$(git -C "$repo_dir" branch --show-current)"
 
@@ -45,7 +64,7 @@ while IFS= read -r git_dir; do
   fi
 
   if $FETCH && git -C "$repo_dir" remote | grep -q .; then
-    printf "Fetching %-24s\r" "$repo_name" >&2
+    printf "Fetching %-28s\r" "$repo_name" >&2
 
     if ! git -C "$repo_dir" fetch --quiet --prune; then
       fetch_failed=true
@@ -53,7 +72,7 @@ while IFS= read -r git_dir; do
       fetch_failed=false
     fi
 
-    printf "%-40s\r" "" >&2
+    printf "%-50s\r" "" >&2
   else
     fetch_failed=false
   fi
@@ -88,17 +107,24 @@ while IFS= read -r git_dir; do
     fi
   fi
 
-  printf "%-24s %-18s %-14s %s\n" \
+  printf "%-40s %-18s %-14s %s\n" \
     "$repo_name" \
     "$branch" \
     "$worktree" \
     "$remote_status"
 
 done < <(
-  find "$CODE_DIR" \
-    -type d \
-    -name .git \
-    -prune \
-    -print |
-    sort
+  {
+    find "$CODE_DIR" \
+      -type d \
+      -name .git \
+      -prune \
+      -print
+
+    for repo in "${EXTRA_REPOS[@]}"; do
+      if [[ -d "$repo/.git" ]]; then
+        printf '%s\n' "$repo/.git"
+      fi
+    done
+  } | sort
 )
