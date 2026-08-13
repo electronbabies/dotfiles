@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+
+set -u
+
+CODE_DIR="${HOME}/code"
+FETCH=false
+
+case "${1:-}" in
+"") ;;
+--fetch)
+  FETCH=true
+  ;;
+-h | --help)
+  cat <<'EOF'
+Usage:
+  repos           Show local repository status
+  repos --fetch   Fetch remotes first, then show status
+EOF
+  exit 0
+  ;;
+*)
+  echo "Unknown option: $1" >&2
+  echo "Use 'repos --help' for usage." >&2
+  exit 1
+  ;;
+esac
+
+printf "%-24s %-18s %-14s %s\n" "REPOSITORY" "BRANCH" "WORKTREE" "REMOTE"
+printf "%-24s %-18s %-14s %s\n" "----------" "------" "--------" "------"
+
+while IFS= read -r git_dir; do
+  repo_dir="${git_dir%/.git}"
+  repo_name="${repo_dir#"$CODE_DIR"/}"
+
+  branch="$(git -C "$repo_dir" branch --show-current)"
+
+  if [[ -z "$branch" ]]; then
+    branch="DETACHED"
+  fi
+
+  if [[ -n "$(git -C "$repo_dir" status --porcelain)" ]]; then
+    worktree="dirty"
+  else
+    worktree="clean"
+  fi
+
+  if $FETCH && git -C "$repo_dir" remote | grep -q .; then
+    printf "Fetching %-24s\r" "$repo_name" >&2
+
+    if ! git -C "$repo_dir" fetch --quiet --prune; then
+      fetch_failed=true
+    else
+      fetch_failed=false
+    fi
+
+    printf "%-40s\r" "" >&2
+  else
+    fetch_failed=false
+  fi
+
+  upstream="$(git -C "$repo_dir" rev-parse \
+    --abbrev-ref '@{upstream}' 2>/dev/null || true)"
+
+  if [[ -z "$upstream" ]]; then
+    if git -C "$repo_dir" remote | grep -q .; then
+      remote_status="no upstream"
+    else
+      remote_status="no remote"
+    fi
+  elif $fetch_failed; then
+    remote_status="fetch failed"
+  else
+    read -r behind ahead < <(
+      git -C "$repo_dir" rev-list \
+        --left-right \
+        --count \
+        "${upstream}...HEAD"
+    )
+
+    if ((ahead > 0 && behind > 0)); then
+      remote_status="diverged +${ahead}/-${behind}"
+    elif ((ahead > 0)); then
+      remote_status="ahead ${ahead}"
+    elif ((behind > 0)); then
+      remote_status="behind ${behind}"
+    else
+      remote_status="synced"
+    fi
+  fi
+
+  printf "%-24s %-18s %-14s %s\n" \
+    "$repo_name" \
+    "$branch" \
+    "$worktree" \
+    "$remote_status"
+
+done < <(
+  find "$CODE_DIR" \
+    -type d \
+    -name .git \
+    -prune \
+    -print |
+    sort
+)
