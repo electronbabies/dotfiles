@@ -33,7 +33,6 @@ echo "Installing dotfiles from: $DOTFILES_DIR"
 
 # ~/.config apps
 link_item "$DOTFILES_DIR/.config/hypr" "$HOME/.config/hypr"
-link_item "$DOTFILES_DIR/.config/kitty" "$HOME/.config/kitty"
 link_item "$DOTFILES_DIR/.config/nvim" "$HOME/.config/nvim"
 link_item "$DOTFILES_DIR/.config/waybar" "$HOME/.config/waybar"
 
