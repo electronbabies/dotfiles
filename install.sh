@@ -38,7 +38,6 @@ link_item "$DOTFILES_DIR/.config/nvim" "$HOME/.config/nvim"
 link_item "$DOTFILES_DIR/.config/waybar" "$HOME/.config/waybar"
 
 # home files
-link_item "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
 link_item "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc"
 link_item "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
 
