@@ -7,17 +7,48 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 
-origin="$(git remote get-url origin 2>/dev/null || true)"
+base="$(basename "$root")"
+parent="$(basename "$(dirname "$root")")"
 
-if [[ -n "$origin" ]]; then
-  # Remove a possible trailing slash first.
-  remote="${origin%/}"
+#
+# Determine the project/report slug.
+#
+# Explicit override wins:
+#
+#   OPENCODE_REPORT_PROJECT=langlife-api get_opencode_report
+#
+if [[ -n "${OPENCODE_REPORT_PROJECT:-}" ]]; then
+  project="$OPENCODE_REPORT_PROJECT"
 
-  # Works with normal HTTPS URLs and GitHub-style SSH URLs.
-  project="${remote##*/}"
-  project="${project%.git}"
+#
+# Repositories organized as:
+#
+#   langlife/api
+#   langlife/ui
+#   langlife/android
+#
+# become:
+#
+#   langlife-api
+#   langlife-ui
+#   langlife-android
+#
+elif [[ "$base" == "api" || "$base" == "ui" || "$base" == "android" ]]; then
+  project="${parent}-${base}"
+
+#
+# Otherwise prefer the Git remote repository name.
+#
 else
-  project="$(basename "$root")"
+  origin="$(git remote get-url origin 2>/dev/null || true)"
+
+  if [[ -n "$origin" ]]; then
+    remote="${origin%/}"
+    project="${remote##*/}"
+    project="${project%.git}"
+  else
+    project="$base"
+  fi
 fi
 
 slug="$(
@@ -37,19 +68,25 @@ report="${report_dir}/${slug}-last.md"
 if [[ ! -f "$report" ]]; then
   echo "Error: OpenCode report not found:" >&2
   echo "  $report" >&2
+  echo >&2
+  echo "Detected project: $project" >&2
+  echo "Detected slug:    $slug" >&2
   exit 1
 fi
 
 cd "$root"
 
 {
+  #
+  # OpenCode's final report.
+  #
   cat "$report"
 
   printf '\n\n---\n\n'
   printf '# Git Diff\n\n'
 
   #
-  # Tracked files
+  # Tracked files.
   #
   # Diff against HEAD includes both staged and unstaged changes.
   #
@@ -62,7 +99,7 @@ cd "$root"
   fi
 
   #
-  # Untracked files
+  # Untracked files.
   #
   # Generate /dev/null -> file diffs without touching the Git index.
   #
