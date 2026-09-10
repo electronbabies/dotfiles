@@ -36,9 +36,20 @@ link_item "$DOTFILES_DIR/.config/hypr" "$HOME/.config/hypr"
 link_item "$DOTFILES_DIR/.config/nvim" "$HOME/.config/nvim"
 link_item "$DOTFILES_DIR/.config/waybar" "$HOME/.config/waybar"
 
+# OpenCode
+link_item "$DOTFILES_DIR/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
+
+# Global helper scripts
+link_item "$DOTFILES_DIR/bin/get_opencode_report" "$HOME/.local/bin/get_opencode_report"
+
 # home files
 link_item "$DOTFILES_DIR/.bashrc" "$HOME/.bashrc"
 link_item "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
+
+# Ensure executable helper scripts stay executable
+if [ -e "$DOTFILES_DIR/bin/get_opencode_report" ]; then
+  chmod +x "$DOTFILES_DIR/bin/get_opencode_report"
+fi
 
 echo
 echo "Done."
@@ -52,3 +63,4 @@ echo
 echo "Next steps:"
 echo "  git status"
 echo "  hyprctl reload"
+echo "  get_opencode_report"

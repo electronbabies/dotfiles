@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "Error: not inside a Git repository." >&2
+  exit 1
+}
+
+origin="$(git remote get-url origin 2>/dev/null || true)"
+
+if [[ -n "$origin" ]]; then
+  # Remove a possible trailing slash first.
+  remote="${origin%/}"
+
+  # Works with normal HTTPS URLs and GitHub-style SSH URLs.
+  project="${remote##*/}"
+  project="${project%.git}"
+else
+  project="$(basename "$root")"
+fi
+
+slug="$(
+  printf '%s' "$project" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+)"
+
+if [[ -z "$slug" ]]; then
+  echo "Error: could not determine project slug." >&2
+  exit 1
+fi
+
+report_dir="/tmp/opencode-reports"
+report="${report_dir}/${slug}-last.md"
+
+if [[ ! -f "$report" ]]; then
+  echo "Error: OpenCode report not found:" >&2
+  echo "  $report" >&2
+  exit 1
+fi
+
+cd "$root"
+
+{
+  cat "$report"
+
+  printf '\n\n---\n\n'
+  printf '# Git Diff\n\n'
+
+  #
+  # Tracked files
+  #
+  # Diff against HEAD includes both staged and unstaged changes.
+  #
+  if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    git diff HEAD --
+  else
+    # Handle a repository that does not have its first commit yet.
+    git diff --cached --
+    git diff --
+  fi
+
+  #
+  # Untracked files
+  #
+  # Generate /dev/null -> file diffs without touching the Git index.
+  #
+  while IFS= read -r -d '' file; do
+    git diff --no-index -- /dev/null "$file" || {
+      status=$?
+
+      # git diff --no-index returns 1 when files differ.
+      # That is expected.
+      if [[ $status -gt 1 ]]; then
+        exit "$status"
+      fi
+    }
+  done < <(git ls-files --others --exclude-standard -z)
+
+} | wl-copy
+
+echo "Copied OpenCode report + full Git diff to clipboard."
+echo "Project: $project"
+echo "Slug:    $slug"
+echo "Report:  $report"
