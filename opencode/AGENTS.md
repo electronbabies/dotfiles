@@ -39,41 +39,108 @@ If verification cannot be completed, clearly state what was not verified and why
 
 For every substantive completed task in every project, write a Markdown completion report in addition to the normal final response.
 
-Store the report at:
+Create `/tmp/opencode-reports` if it does not already exist.
+
+### Explicit Report Path Takes Precedence
+
+If the task prompt explicitly specifies a completion-report path, use that exact path.
+
+When an explicit report path is supplied:
+
+- write the report only to that requested path
+- overwrite the existing file at that path if one exists
+- do not additionally create the automatic `<project-slug>-last.md` report
+- do not derive another report filename from the repository, Git remote, package name, or directory
+- the explicitly requested path completely overrides automatic report naming
+
+Example:
+
+If the task specifies:
+
+`/tmp/opencode-reports/langlife-api-foundation-last.md`
+
+write only:
+
+`/tmp/opencode-reports/langlife-api-foundation-last.md`
+
+Do not also create:
+
+`/tmp/opencode-reports/langlife-api-last.md`
+
+or any origin-derived or repository-derived report.
+
+### Automatic Report Path
+
+If the task prompt does not explicitly specify a report path, store the report at:
 
 `/tmp/opencode-reports/<project-slug>-last.md`
 
-Create `/tmp/opencode-reports` if it does not already exist.
-
 ### Project Slug
 
-Determine `<project-slug>` from the Git repository's `origin` remote repository name whenever possible.
+Determine `<project-slug>` from the Git repository's filesystem location.
 
-Do NOT derive the project slug merely from the current directory name.
+Never derive the project slug from:
+
+- the Git `origin` remote
+- any other Git remote
+- a GitHub repository name
+- a package/composer/npm name
+- historical repository names
+- deployment names
+
+Resolve the repository root with:
+
+`git rev-parse --show-toplevel`
+
+Then derive the project slug using the following rules.
+
+#### Nested Application Repositories
+
+If the Git repository root directory basename is one of:
+
+- `api`
+- `ui`
+- `android`
+
+combine the parent directory basename with the repository root basename.
 
 Examples:
 
-- `git@github.com:electronbabies/CastCue.git` -> `castcue`
-- `https://github.com/electronbabies/CastCue.git` -> `castcue`
-- `git@github.com:electronbabies/langlife-api.git` -> `langlife-api`
-- A checkout located at `~/code/langlife/api` whose origin repository is `langlife-api.git` -> `langlife-api`
+- `~/code/langlife/api` -> `langlife-api`
+- `~/code/langlife/ui` -> `langlife-ui`
+- `~/code/langlife/android` -> `langlife-android`
 
-Normalize the repository name by:
+This filesystem-derived name is authoritative even if the Git remote still uses an old or historical repository name such as `ocr-capture-server`.
 
-- removing a trailing `.git`
+#### Ordinary Repositories
+
+For other repositories, use the Git repository root directory basename.
+
+Examples:
+
+- `~/code/castcue` -> `castcue`
+- `~/code/jvequipment` -> `jvequipment`
+- `~/code/poopy-pickup` -> `poopy-pickup`
+
+Normalize the resulting slug by:
+
 - converting to lowercase
-- replacing non-alphanumeric separators with hyphens where appropriate
+- replacing spaces with hyphens
+- replacing runs of unsupported punctuation or separators with a single hyphen
+- trimming leading or trailing hyphens
 
-If the repository has no `origin` remote, fall back to the Git repository root directory name and normalize it the same way.
+Do not inspect Git remotes merely to determine the report slug.
 
 ### Report Behavior
 
-- Overwrite the project's existing `-last.md` report after each substantive task.
+- Overwrite the existing report at the selected path after each substantive task.
 - Do not create timestamped reports unless explicitly requested.
 - Write the report after implementation and verification so it reflects the final state.
 - If a task is blocked, stopped by a research gate, or intentionally not implemented, still write the report and clearly explain the result.
 - The report should match the substance of the normal final response.
 - Use Markdown.
+- Completion reports live outside the repository and must never be added to Git.
+- Do not create duplicate completion reports for the same task.
 
 ### Report Contents
 
