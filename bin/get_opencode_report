@@ -7,74 +7,133 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 
+cd "$root"
+
 base="$(basename "$root")"
 parent="$(basename "$(dirname "$root")")"
-
-#
-# Determine the project/report slug.
-#
-# Explicit override wins:
-#
-#   OPENCODE_REPORT_PROJECT=langlife-api get_opencode_report
-#
-if [[ -n "${OPENCODE_REPORT_PROJECT:-}" ]]; then
-  project="$OPENCODE_REPORT_PROJECT"
-
-#
-# Repositories organized as:
-#
-#   langlife/api
-#   langlife/ui
-#   langlife/android
-#
-# become:
-#
-#   langlife-api
-#   langlife-ui
-#   langlife-android
-#
-elif [[ "$base" == "api" || "$base" == "ui" || "$base" == "android" ]]; then
-  project="${parent}-${base}"
-
-#
-# Otherwise prefer the Git remote repository name.
-#
-else
-  origin="$(git remote get-url origin 2>/dev/null || true)"
-
-  if [[ -n "$origin" ]]; then
-    remote="${origin%/}"
-    project="${remote##*/}"
-    project="${project%.git}"
-  else
-    project="$base"
-  fi
-fi
-
-slug="$(
-  printf '%s' "$project" |
-    tr '[:upper:]' '[:lower:]' |
-    sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
-)"
-
-if [[ -z "$slug" ]]; then
-  echo "Error: could not determine project slug." >&2
-  exit 1
-fi
+branch="$(git branch --show-current 2>/dev/null || true)"
 
 report_dir="/tmp/opencode-reports"
-report="${report_dir}/${slug}-last.md"
 
-if [[ ! -f "$report" ]]; then
-  echo "Error: OpenCode report not found:" >&2
-  echo "  $report" >&2
-  echo >&2
-  echo "Detected project: $project" >&2
-  echo "Detected slug:    $slug" >&2
-  exit 1
+#
+# Resolution priority:
+#
+# 1. Exact report path override
+#
+#      OPENCODE_REPORT_FILE=/tmp/opencode-reports/foo.md get_opencode_report
+#
+# 2. Explicit project/slug override
+#
+#      OPENCODE_REPORT_PROJECT=langlife-api-study get_opencode_report
+#
+# 3. Known LangLife worktree branches
+#
+# 4. Current worktree directory name
+#
+# Remote repository names are intentionally NOT used.
+# Git worktrees share a remote and therefore cannot be distinguished by it.
+#
+
+if [[ -n "${OPENCODE_REPORT_FILE:-}" ]]; then
+  report="$OPENCODE_REPORT_FILE"
+  project="explicit-report"
+  slug="explicit-report"
+
+elif [[ -n "${OPENCODE_REPORT_PROJECT:-}" ]]; then
+  project="$OPENCODE_REPORT_PROJECT"
+
+  slug="$(
+    printf '%s' "$project" |
+      tr '[:upper:]' '[:lower:]' |
+      sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+  )"
+
+  report="${report_dir}/${slug}-last.md"
+
+else
+  #
+  # Known LangLife parallel-agent branches.
+  #
+  case "$branch" in
+  api-03/captures)
+    project="langlife-api-captures"
+    ;;
+  api-03/gaps)
+    project="langlife-api-gaps"
+    ;;
+  api-03/study)
+    project="langlife-api-study"
+    ;;
+  api-03/workers)
+    project="langlife-api-workers"
+    ;;
+
+  *)
+    #
+    # Normal LangLife monorepo-style directories:
+    #
+    #   langlife/api
+    #   langlife/ui
+    #   langlife/android
+    #
+    # become:
+    #
+    #   langlife-api
+    #   langlife-ui
+    #   langlife-android
+    #
+    if [[ "$base" == "api" || "$base" == "ui" || "$base" == "android" ]]; then
+      project="${parent}-${base}"
+    else
+      #
+      # For worktrees such as:
+      #
+      #   langlife-api-study
+      #   langlife-api-workers
+      #
+      # the worktree directory itself is the safest identity.
+      #
+      project="$base"
+    fi
+    ;;
+  esac
+
+  slug="$(
+    printf '%s' "$project" |
+      tr '[:upper:]' '[:lower:]' |
+      sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+  )"
+
+  if [[ -z "$slug" ]]; then
+    echo "Error: could not determine project slug." >&2
+    exit 1
+  fi
+
+  report="${report_dir}/${slug}-last.md"
 fi
 
-cd "$root"
+#
+# Never silently fall back to some other report.
+#
+if [[ ! -f "$report" ]]; then
+  echo "Error: OpenCode report not found." >&2
+  echo >&2
+  echo "Worktree: $root" >&2
+  echo "Branch:   ${branch:-<detached>}" >&2
+  echo "Project:  $project" >&2
+  echo "Slug:     $slug" >&2
+  echo "Expected: $report" >&2
+  echo >&2
+  echo "Available reports:" >&2
+
+  if compgen -G "${report_dir}/*.md" >/dev/null; then
+    find "$report_dir" -maxdepth 1 -type f -name '*.md' -printf '  %f\n' | sort >&2
+  else
+    echo "  <none>" >&2
+  fi
+
+  exit 1
+fi
 
 {
   #
@@ -87,28 +146,24 @@ cd "$root"
 
   #
   # Tracked files.
-  #
-  # Diff against HEAD includes both staged and unstaged changes.
+  # Diff against HEAD includes staged + unstaged changes.
   #
   if git rev-parse --verify HEAD >/dev/null 2>&1; then
     git diff HEAD --
   else
-    # Handle a repository that does not have its first commit yet.
     git diff --cached --
     git diff --
   fi
 
   #
   # Untracked files.
-  #
-  # Generate /dev/null -> file diffs without touching the Git index.
+  # Produce /dev/null -> file diffs without touching the Git index.
   #
   while IFS= read -r -d '' file; do
     git diff --no-index -- /dev/null "$file" || {
       status=$?
 
       # git diff --no-index returns 1 when files differ.
-      # That is expected.
       if [[ $status -gt 1 ]]; then
         exit "$status"
       fi
@@ -118,6 +173,8 @@ cd "$root"
 } | wl-copy
 
 echo "Copied OpenCode report + full Git diff to clipboard."
-echo "Project: $project"
-echo "Slug:    $slug"
-echo "Report:  $report"
+echo "Worktree: $root"
+echo "Branch:   ${branch:-<detached>}"
+echo "Project:  $project"
+echo "Slug:     $slug"
+echo "Report:   $report"
