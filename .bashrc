@@ -39,3 +39,7 @@ export SDKMAN_DIR="$HOME/.sdkman"
 shot() {
   adb exec-out screencap -p >"$HOME/Pictures/phone-$(date +%Y-%m-%d_%H-%M-%S).png"
 }
+
+phone-shot-clip() {
+  adb exec-out screencap -p | wl-copy
+}
