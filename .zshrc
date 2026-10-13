@@ -84,3 +84,6 @@ export SDKMAN_DIR="$HOME/.sdkman"
 
 # Unity CLI
 case ":${PATH}:" in *:"$HOME/.local/bin":*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+
+# opencode
+export PATH=/home/electronbabies/.opencode/bin:$PATH

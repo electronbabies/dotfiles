@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Sleep inhibited for this shell."
+echo "Close this shell to restore normal sleep behavior."
+
+exec systemd-inhibit \
+  --what=sleep \
+  --why="Coding session" \
+  bash
