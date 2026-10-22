@@ -1,0 +1,11 @@
+[Unit]
+Description=Prevent system suspension during development
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/systemd-inhibit --what=sleep --mode=block --who=OpenCode --why="Development agents running" /usr/bin/sleep infinity
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
